@@ -1,11 +1,10 @@
-// server/routes/userRoutes.js
-const express = require('express');
-const router = express.Router();
-const userController = require('../controllers/userController');
+import { Router } from 'express';
+import * as userController from '../controllers/userController';
 
-// Визначаємо маршрути
-router.get('/test-db', userController.testConnection);
-router.get('/setup-db', userController.setupDatabase);
+const router = Router();
+
+// POST /api/users/register
+// Мы используем POST, так как создаем ресурс
 router.post('/register', userController.registerUser);
 
-module.exports = router;
+export default router;
