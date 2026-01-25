@@ -29,15 +29,7 @@ const registerUser = async (req, res) => {
     }
 };
 
-// Логіка перевірки бази
-const testConnection = async (req, res) => {
-    try {
-        const result = await pool.query('SELECT NOW()');
-        res.json({ status: 'Connected to DB!', time: result.rows[0] });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-};
+
 
 // Логіка створення таблиці
 const setupDatabase = async (req, res) => {
