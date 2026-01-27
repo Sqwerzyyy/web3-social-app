@@ -1,0 +1,15 @@
+{
+  "name": "my-social-project",
+  "version": "1.0.0",
+  "description": "My Social Network Smart Contracts",
+  "scripts": {
+    "test": "hardhat test",
+    "compile": "hardhat compile"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "chai": "^4.3.7",
+    "hardhat": "^2.22.5",
+    "@openzeppelin/contracts": "^5.0.2"
+  }
+}
