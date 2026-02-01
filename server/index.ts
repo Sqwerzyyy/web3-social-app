@@ -1,10 +1,10 @@
-// server/index.js
-const express = require('express');
-const cors = require('cors');
-const userRoutes = require('./routes/userRoutes'); // Імпортуємо наші маршрути
+// server/index.ts
+import express from 'express';
+import cors from 'cors';
+import userRoutes from "./routes/userRoutes";
 
 const app = express();
-const PORT = 3000;
+const PORT: number = 3000;
 
 // Middleware (прошарки)
 app.use(cors());
