@@ -1,4 +1,4 @@
-// server/index.ts
+// server/app.ts
 import express from 'express';
 import cors from 'cors';
 import userRoutes from "./routes/userRoutes";
@@ -14,6 +14,5 @@ app.use(express.json());
 // Тепер всі адреси будуть починатися з /api. Наприклад: /api/register
 app.use('/api', userRoutes);
 
-app.listen(PORT, () => {
-    console.log(`🚀 Сервер запущено на порту ${PORT}`);
-});
+export default app;
+

@@ -12,14 +12,16 @@ interface createProfileData {
 }
 
 export const createUserProfile = async (data: createProfileData) => {
-    return await prisma.userProfile.create({
+    const user = await prisma.userProfile.create({
         data: {
             username: data.username,
             firstName: data.firstName,
             lastName: data.lastName,
+            password: data.password,
             email: data.email,
             country: data.country,
         }
     })
+    return user
 };
 
