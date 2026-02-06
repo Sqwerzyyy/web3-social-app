@@ -14,12 +14,14 @@ datasource db {
   url      = env("DATABASE_URL") // Ссылка на базу из .env
 }
 
-model RwaProfiles {
+model UserProfile {
   id          Int       @id@default(autoincrement())
   firstName   String    @map("first_name")
   lastName    String    @map("last_name")
   username    String    @unique
   country     String
+  email       String    @unique
+  password    String
   createdAt   DateTime  @default(now()) @map("created_at")
 
   @@map("user_profiles")
