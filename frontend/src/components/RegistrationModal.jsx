@@ -513,3 +513,4 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
     </motion.div>
   )
 }
+
