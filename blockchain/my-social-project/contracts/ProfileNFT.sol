@@ -39,6 +39,7 @@ contract ProfileNFT is ERC721, ERC721Burnable, Ownable, Pausable {
     event SoulboundModeChanged(bool enabled);
 
     error ProfileAlreadyExists();
+    error AgeIsTooSmall();
     error NicknameTaken();
     error InvalidSignature();
     error SignatureExpired();
