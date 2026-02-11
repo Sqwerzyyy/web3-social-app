@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # База данных: Сердце системы, где хранятся черновики документов
+  # 1. База данных (PostgreSQL)
   db:
     image: postgres:15
     container_name: web3_mess_db
@@ -9,26 +9,51 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin1234
-      POSTGRES_DB: social_db
+      POSTGRES_DB: web3_social  # Исправили имя базы под ваш проект
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Чтобы данные не исчезали при перезапуске
 
-  # Бэкенд на Node.js (отдел бэкенда работает здесь)
+  # 2. Бэкенд (Node.js + Express + Prisma)
   backend:
     build: ./server
     container_name: web3_mess_backend
     ports:
-      - "3000:3000"
+      - "3001:3001" # Исправили порт на 3001 (как в React)
     environment:
-      - DATABASE_URL=postgresql://admin:password1234@db:5432/social_db
+      # ВАЖНО: @db означает обращение к контейнеру "db" по внутренней сети докера
+      DATABASE_URL: "postgresql://admin:admin1234@db:5432/web3_social?schema=public"
+      PORT: 3001
     depends_on:
       - db
     volumes:
-      - ./server:/app # Это позволит коду обновляться мгновенно без перезапуска докера
+      - ./server:/app
+      - /app/node_modules # Чтобы локальные модули не конфликтовали с контейнером
+    # Команда запуска: Ждем базу -> Генерируем клиент -> Накатываем миграции -> Запускаем сервер
+    command: >
+      sh -c "npx prisma generate && npx prisma migrate deploy && npx tsx index.ts"
 
-  # Блокчейн-нода (отдел блокчейна)
-  blockchain:
-    image: parity/substrate # Или другой образ по вашему выбору
-    container_name: web3_mess_node
+  # 3. Фронтенд (React) - ДОБАВИЛ, ЧТОБЫ ЗАПУСКАТЬ ВСЁ ВМЕСТЕ
+  frontend:
+    build: ./frontend
+    container_name: web3_mess_frontend
     ports:
-      - "9944:9944"
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:3001
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true # Нужно для React в Docker
+    tty: true
+
+  # 4. Блокчейн-нода (Оставляем пока закомментированной или базовой)
+  # Если вы хотите использовать локальную ноду (которая у вас в файлах),
+  # её сложно запихнуть в докер без Dockerfile.
+  # Пока лучше запускать её отдельно в терминале, чтобы не усложнять.
+
+volumes:
+  postgres_data:
