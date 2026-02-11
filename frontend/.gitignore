@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+substrate-contracts-node
+substrate-contracts-node-mac-universal.tar.gz
+blockchain/my-social-project/artifacts/
+blockchain/my-social-project/cache/
+node_modules/
+.env
+substrate-contracts-node
+*.tar.gz
+blockchain/
+artifacts/
+cache/
