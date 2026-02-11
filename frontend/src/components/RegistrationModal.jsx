@@ -41,7 +41,6 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
     setLoading(true)
     setTimeout(() => {
       setLoading(false)
-      // Toast notification removed here
       if (onLoginSuccess) onLoginSuccess()
     }, 1500)
   }
@@ -93,10 +92,8 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
       return
     }
 
-    // --- ВАШИ ИЗМЕНЕНИЯ ЗДЕСЬ ---
-    // Подготовка данных. Маппим nickname -> username
     const payload = {
-      username: state.data.nickname, // <--- ВОТ ЗДЕСЬ мы превращаем nickname в username
+      username: state.data.nickname,
       firstName: state.data.firstName,
       lastName: state.data.lastName,
       country: state.data.country,
@@ -104,14 +101,11 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
       password: state.data.password
     }
 
-    // Для отладки: выводим в консоль, чтобы вы видели результат
     console.log('Payload prepared:', payload);
-    // ---------------------------
 
     setLoading(true)
     setTimeout(() => {
       setLoading(false)
-      // Toast notification removed here
       if (onLoginSuccess) onLoginSuccess()
     }, 1500)
   }
