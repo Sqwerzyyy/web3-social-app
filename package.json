@@ -6,7 +6,8 @@
     "bcrypt": "^6.0.0",
     "framer-motion": "^12.27.1",
     "lucide-react": "^0.562.0",
-    "three": "^0.182.0"
+    "three": "^0.182.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0"
