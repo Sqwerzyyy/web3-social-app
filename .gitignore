@@ -1,17 +1,6 @@
-# Зависимости (самое важное!)
 node_modules/
 **/node_modules/
-
-# Сборка и временные файлы
-dist/
-.vite/
 .idea/
-.vscode/
-
-# Секреты (чтобы почта и ключи не улетели в паблик)
-*.env
-*.env.local
-
-# Логи
+dist/
+.env
 *.log
-npm-debug.log*
