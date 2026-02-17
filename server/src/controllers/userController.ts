@@ -4,11 +4,7 @@ import { RegisterUserDto, LoginUserDto } from '../types/user.types';
 
 type RegisterRequest = Request<{}, {}, RegisterUserDto>;
 type LoginRequest = Request<{}, {}, LoginUserDto>;
-export const registerUser = async (
-    req: RegisterRequest,
-    res: Response,
-    next: NextFunction
-): Promise<void> => {
+export const registerUser = async (req: RegisterRequest, res: Response, next: NextFunction )=> {
     try {
         const { username, email, password, firstName, lastName, country } = req.body;
 
@@ -27,15 +23,11 @@ export const registerUser = async (
         });
 
     } catch (error) {
-        next(error);
+        next(userService);
     }
 };
 
-export const loginUser = async (
-    req: LoginRequest,
-    res: Response,
-    next: NextFunction
-): Promise<void> => {
+export const loginUser = async (req: LoginRequest, res: Response, next: NextFunction) => {
     try {
         const { email, password } = req.body;
 
