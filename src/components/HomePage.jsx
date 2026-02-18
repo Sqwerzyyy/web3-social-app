@@ -6,7 +6,7 @@ const HomePage = () => {
     const [textStage, setTextStage] = useState('hub');
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-    // Базові налаштування
+    // Настройки темы и языка
     const [settings, setSettings] = useState({
         theme: 'dark',
         notifications: true,
@@ -20,6 +20,7 @@ const HomePage = () => {
         return () => clearTimeout(timer);
     }, []);
 
+    // Варианты анимации
     const variants = {
         hidden: { opacity: 0, scale: 0.9, y: 20, filter: "blur(10px)" },
         visible: {
@@ -31,6 +32,32 @@ const HomePage = () => {
             transition: { duration: 0.8, ease: "easeInOut" }
         }
     };
+
+    // Переводы
+    const translations = {
+        EN: {
+            welcome: "WELCOME TO YOUR HUB",
+            settings: "Settings",
+            theme: "Theme",
+            language: "Language",
+            dark: "🌙 Dark",
+            light: "☀️ Light",
+            ukrainian: "Ukrainian",
+            english: "English"
+        },
+        UA: {
+            welcome: "ЛАСКАВО ПРОСИМО ДО ВАШОГО ЦЕНТРУ",
+            settings: "Налаштування",
+            theme: "Тема",
+            language: "Мова",
+            dark: "🌙 Темна",
+            light: "☀️ Світла",
+            ukrainian: "Українська",
+            english: "Англійська"
+        }
+    };
+
+    const t = translations[settings.language];
 
     return (
         <div className={`home-container ${settings.theme}`}>
@@ -58,21 +85,28 @@ const HomePage = () => {
                         className="settings-panel"
                     >
                         <div className="settings-header">
-                            <h3>Settings</h3>
+                            <h3>{t.settings}</h3>
                             <button onClick={() => setIsSettingsOpen(false)}>×</button>
                         </div>
                         <div className="settings-content">
                             <div className="setting-item">
-                                <span>Theme</span>
-                                <button onClick={() => setSettings({...settings, theme: settings.theme === 'dark' ? 'light' : 'dark'})}>
-                                    {settings.theme === 'dark' ? '🌙 Dark' : '☀️ Light'}
+                                <span>{t.theme}</span>
+                                <button
+                                    onClick={() =>
+                                        setSettings({...settings, theme: settings.theme === 'dark' ? 'light' : 'dark'})
+                                    }
+                                >
+                                    {settings.theme === 'dark' ? t.dark : t.light}
                                 </button>
                             </div>
                             <div className="setting-item">
-                                <span>Language</span>
-                                <select value={settings.language} onChange={(e) => setSettings({...settings, language: e.target.value})}>
-                                    <option value="UA">Ukrainian</option>
-                                    <option value="EN">English</option>
+                                <span>{t.language}</span>
+                                <select
+                                    value={settings.language}
+                                    onChange={(e) => setSettings({...settings, language: e.target.value})}
+                                >
+                                    <option value="UA">{t.ukrainian}</option>
+                                    <option value="EN">{t.english}</option>
                                 </select>
                             </div>
                         </div>
@@ -91,7 +125,7 @@ const HomePage = () => {
                             animate="visible"
                             exit="exit"
                         >
-                            WELCOME TO YOUR HUB
+                            {t.welcome}
                         </motion.h1>
                     )}
                 </AnimatePresence>

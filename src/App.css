@@ -464,3 +464,44 @@
   border-radius: 5px;
   cursor: pointer;
 }
+.home-container.dark {
+  background-color: #121212;
+  color: white;
+  transition: background 0.5s, color 0.5s;
+}
+
+.home-container.light {
+  background-color: #f9f9f9;
+  color: #121212;
+  transition: background 0.5s, color 0.5s;
+}
+
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 280px;
+  background-color: rgba(20, 20, 20, 0.95);
+  color: white;
+  padding: 20px;
+  box-shadow: -2px 0 15px rgba(0,0,0,0.4);
+}
+
+.home-container.light .settings-panel {
+  background-color: white;
+  color: black;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-item {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
