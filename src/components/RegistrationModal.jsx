@@ -5,14 +5,21 @@ import { useMultiStepForm } from '../hooks/useMultiStepForm'
 import PremiumSelect from './PremiumSelect'
 
 const EMAILJS_CONFIG = {
-  SERVICE_ID: 'YOUR_SERVICE_ID',
-  TEMPLATE_ID: 'YOUR_TEMPLATE_ID',
-  PUBLIC_KEY: 'YOUR_PUBLIC_KEY'
+  SERVICE_ID: 'service_vycwn59',   // 🔹 замените на ваш ID сервиса
+  TEMPLATE_ID: 'template_cxoznqo', // 🔹 шаблон с полем {{code}}
+  PUBLIC_KEY: 'XH5OJFrPI8LOhdqgw'    // 🔹 ваш публичный ключ
 }
 
+// если хочешь оставить разработческий обход (например, на случай тестов)
 const MASTER_BYPASS_CODE = '123456'
 
-export default function RegistrationModal({ isOpen, onClose, mode = 'register', showToastNotification, onLoginSuccess }) {
+export default function RegistrationModal({
+                                            isOpen,
+                                            onClose,
+                                            mode = 'register',
+                                            showToastNotification,
+                                            onLoginSuccess
+                                          }) {
   const { state, setField, setErrors, setLoading, nextStep, prevStep, reset } = useMultiStepForm()
   const [generatedCode, setGeneratedCode] = useState(null)
   const [loginData, setLoginData] = useState({ email: '', password: '' })
@@ -53,27 +60,54 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
       setErrors({ email: 'Invalid Email Format' })
       return
     }
+
     setLoading(true)
+
     const code = Math.floor(100000 + Math.random() * 900000).toString()
     setGeneratedCode(code)
 
-    setTimeout(() => {
-      setLoading(false)
-      showToastNotification(`System: Use developer code 123456`, 'success')
+    try {
+      await emailjs.send(
+          EMAILJS_CONFIG.SERVICE_ID,
+          EMAILJS_CONFIG.TEMPLATE_ID,
+          {
+            to_email: state.data.email,
+            code,                // используется в шаблоне EmailJS как {{code}}
+          },
+          EMAILJS_CONFIG.PUBLIC_KEY
+      )
+
+      showToastNotification('Verification code sent to your email', 'success')
       nextStep()
-    }, 1000)
+    } catch (error) {
+      console.error('Email send failed:', error)
+      setErrors({ email: 'Failed to send code. Try again.' })
+    } finally {
+      setLoading(false)
+    }
   }
 
   // === REGISTRATION STEP 2: VERIFY CODE ===
   const handleVerifyCode = async (e) => {
     e.preventDefault()
     setErrors({})
+
     const inputCode = state.data.verificationCode?.trim()
-    if (!inputCode || inputCode.length !== 6) { setErrors({ verificationCode: 'Enter 6-digit code' }); return; }
-    if (inputCode !== generatedCode && inputCode !== MASTER_BYPASS_CODE) { setErrors({ verificationCode: 'Invalid code' }); return; }
+    if (!inputCode || inputCode.length !== 6) {
+      setErrors({ verificationCode: 'Enter 6-digit code' })
+      return
+    }
+
+    if (inputCode !== generatedCode && inputCode !== MASTER_BYPASS_CODE) {
+      setErrors({ verificationCode: 'Invalid code' })
+      return
+    }
 
     setLoading(true)
-    setTimeout(() => { setLoading(false); nextStep() }, 800)
+    setTimeout(() => {
+      setLoading(false)
+      nextStep()
+    }, 800)
   }
 
   // === REGISTRATION STEP 3: COMPLETE PROFILE ===
@@ -81,6 +115,7 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
     e.preventDefault()
     setErrors({})
     const errors = {}
+
     if (!state.data.firstName.trim()) errors.firstName = 'Required'
     if (!state.data.lastName.trim()) errors.lastName = 'Required'
     if (!state.data.country) errors.country = 'Required'
@@ -101,7 +136,7 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
       password: state.data.password
     }
 
-    console.log('Payload prepared:', payload);
+    console.log('Payload prepared:', payload)
 
     setLoading(true)
     setTimeout(() => {
@@ -127,9 +162,9 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
 
           <AnimatePresence mode="wait">
             {mode === 'login' ? (
+                // === LOGIN ===
                 <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <h2 className="modal-title">Welcome Back</h2>
-                  <p className="modal-subtitle">Sign in to continue</p>
                   <form className="modal-form" onSubmit={handleLogin} noValidate>
                     <div className="form-group">
                       <input type="email" placeholder="Email Address" className={`modal-input ${loginErrors.email ? 'error' : ''}`} value={loginData.email} onChange={(e) => setLoginData({ ...loginData, email: e.target.value })} disabled={state.isLoading} autoFocus />
@@ -140,10 +175,10 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
                       {loginErrors.password && <span className="form-error">{loginErrors.password}</span>}
                     </div>
                     <button type="submit" className="modal-submit" disabled={state.isLoading}>Log In</button>
-                    <a href="#" className="forgot-password-link">Forgot Password?</a>
                   </form>
                 </motion.div>
             ) : state.currentStep === 1 ? (
+                // === STEP 1: EMAIL INPUT ===
                 <motion.div key="step1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <h2 className="modal-title">Create Account</h2>
                   <p className="modal-subtitle">Enter your email to get started</p>
@@ -156,9 +191,10 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
                   </form>
                 </motion.div>
             ) : state.currentStep === 2 ? (
+                // === STEP 2: CODE VERIFICATION ===
                 <motion.div key="step2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <h2 className="modal-title">Verify Email</h2>
-                  <p className="modal-subtitle">Enter the verification code sent to your email</p>
+                  <p className="modal-subtitle">Enter the 6-digit code sent to your email</p>
                   <form className="modal-form" onSubmit={handleVerifyCode} noValidate>
                     <div className="form-group">
                       <input ref={otpInputRef} type="text" placeholder="000000" className={`modal-input otp-input ${state.errors.verificationCode ? 'error' : ''}`} value={state.data.verificationCode} onChange={(e) => setField('verificationCode', e.target.value)} maxLength={6} disabled={state.isLoading} />
@@ -168,6 +204,7 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
                   </form>
                 </motion.div>
             ) : (
+                // === STEP 3: PROFILE COMPLETION ===
                 <motion.div key="step3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <h2 className="modal-title">Complete Profile</h2>
                   <form className="modal-form" onSubmit={handleCompleteRegistration} noValidate>
@@ -187,3 +224,81 @@ export default function RegistrationModal({ isOpen, onClose, mode = 'register', 
       </motion.div>
   )
 }
+// === ОБЩАЯ ФУНКЦИЯ ОТПРАВКИ КОДА ===
+const sendVerificationEmail = async (email) => {
+  setLoading(true);
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  setGeneratedCode(code);
+
+  try {
+    await emailjs.send(
+        EMAILJS_CONFIG.SERVICE_ID,
+        EMAILJS_CONFIG.TEMPLATE_ID,
+        {
+          to_email: email,
+          code,
+        },
+        EMAILJS_CONFIG.PUBLIC_KEY
+    );
+    showToastNotification('Verification code sent to your email', 'success');
+    nextStep(); // Переходим к вводу кода (Step 2)
+  } catch (error) {
+    console.error('Email send failed:', error);
+    setErrors({ email: 'Failed to send code. Try again.' });
+    setLoginErrors({ email: 'Failed to send code.' });
+  } finally {
+    setLoading(false);
+  }
+};
+
+// === ОБНОВЛЕННЫЙ LOGIN HANDLER ===
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setLoginErrors({});
+
+  if (!loginData.email || !/\S+@\S+\.\S+/.test(loginData.email)) {
+    setLoginErrors({ email: 'Invalid Email Format' });
+    return;
+  }
+
+  // Сохраняем email в общее состояние формы, чтобы Step 2 знал, куда мы шлем код
+  setField('email', loginData.email);
+
+  // Отправляем код вместо мгновенного входа
+  await sendVerificationEmail(loginData.email);
+};
+
+// === ОБНОВЛЕННЫЙ REGISTRATION STEP 1 ===
+const handleSendCode = async (e) => {
+  e.preventDefault();
+  setErrors({});
+  if (!state.data.email || !/\S+@\S+\.\S+/.test(state.data.email)) {
+    setErrors({ email: 'Invalid Email Format' });
+    return;
+  }
+  await sendVerificationEmail(state.data.email);
+};
+
+// === ОБНОВЛЕННЫЙ VERIFY CODE (Step 2) ===
+const handleVerifyCode = async (e) => {
+  e.preventDefault();
+  setErrors({});
+
+  const inputCode = state.data.verificationCode?.trim();
+  if (inputCode !== generatedCode && inputCode !== MASTER_BYPASS_CODE) {
+    setErrors({ verificationCode: 'Invalid code' });
+    return;
+  }
+
+  setLoading(true);
+  setTimeout(() => {
+    setLoading(false);
+    if (mode === 'login') {
+      // Если это вход — завершаем процесс
+      if (onLoginSuccess) onLoginSuccess();
+    } else {
+      // Если регистрация — идем на шаг заполнения профиля (Step 3)
+      nextStep();
+    }
+  }, 800);
+};
