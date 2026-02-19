@@ -8,3 +8,5 @@ substrate-contracts-node
 *.tar.gz
 node_modules/
 .idea/
+echo ".vite/" >> ../../.gitignore
+echo "frontend/.vite/" >> ../../.gitignore
