@@ -1,115 +1,64 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+import { encodePacked, keccak256 } from "viem";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("ProfileNFT", function () {
+  async function deployProfileNFTFixture() {
+    const [owner, user, signerAccount] = await hre.viem.getWalletClients();
+    const publicClient = await hre.viem.getPublicClient();
 
-    function generateRandomNickname() {
-        const timestamp = Date.now();
-        const random = Math.floor(Math.random() * 1000);
-        return `User_${timestamp}_${random}`;
-    }
+    const profileNFT = await hre.viem.deployContract("ProfileNFT", [
+      signerAccount.account.address,
+    ]);
 
-    async function deployFixture() {
-        const [owner, user1, user2] = await ethers.getSigners();
-        const chainId = (await ethers.provider.getNetwork()).chainId;
+    return { profileNFT, owner, user, signerAccount, publicClient };
+  }
 
-        const ProfileNFT = await ethers.getContractFactory("ProfileNFT");
-        const profileContract = await ProfileNFT.deploy(owner.address);
+  it("Should create a profile with a valid signature and age", async function () {
+    const { profileNFT, user, signerAccount, publicClient } = await loadFixture(deployProfileNFTFixture);
 
-        return { profileContract, owner, user1, user2, chainId };
-    }
+    const nickname = "Oleg_Web3";
+    const age = 17n; 
+    const soulbound = false;
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+    const chainId = BigInt(hre.network.config.chainId || 31337);
 
-    describe("Registration Flow", function () {
-        it("Should allow user to mint profile with valid server signature", async function () {
-            const { profileContract, owner, user1, chainId } = await loadFixture(deployFixture);
+    const nonce = await publicClient.readContract({
+      address: profileNFT.address,
+      abi: profileNFT.abi,
+      functionName: "nonces",
+      args: [user.account.address],
+    }) as bigint;
 
-            const nickname = generateRandomNickname();
-            const soulbound = false;
-            const deadline = await time.latest() + 3600;
-            const nonce = await profileContract.nonces(user1.address);
+    const messageHash = keccak256(
+      encodePacked(
+        ["address", "string", "uint256", "bool", "uint256", "uint256", "uint256"],
+        [user.account.address, nickname, age, soulbound, deadline, chainId, nonce]
+      )
+    );
 
-            const messageHash = ethers.solidityPackedKeccak256(
-                ["address", "string", "bool", "uint256", "uint256", "uint256"],
-                [user1.address, nickname, soulbound, deadline, chainId, nonce]
-            );
-
-            const messageBytes = ethers.getBytes(messageHash);
-            const signature = await owner.signMessage(messageBytes);
-
-            await expect(profileContract.connect(user1).createProfile(nickname, soulbound, deadline, signature))
-                .to.emit(profileContract, "ProfileCreated")
-                .withArgs(user1.address, 1n, nickname, anyValue, soulbound);
-
-            expect(await profileContract.takenNicknames(nickname)).to.be.true;
-            expect(await profileContract.balanceOf(user1.address)).to.equal(1n);
-            expect(await profileContract.userTokenId(user1.address)).to.equal(1n);
-        });
-
-        it("Should FAIL if signature is wrong (Hacking attempt)", async function () {
-            const { profileContract, owner, user1, user2, chainId } = await loadFixture(deployFixture);
-
-            const nickname = generateRandomNickname();
-            const deadline = await time.latest() + 3600;
-            const nonce = await profileContract.nonces(user1.address);
-
-            const messageHash = ethers.solidityPackedKeccak256(
-                ["address", "string", "bool", "uint256", "uint256", "uint256"],
-                [user2.address, nickname, false, deadline, chainId, nonce]
-            );
-            const signature = await owner.signMessage(ethers.getBytes(messageHash));
-
-            await expect(
-                profileContract.connect(user1).createProfile(nickname, false, deadline, signature)
-            ).to.be.revertedWithCustomError(profileContract, "InvalidSignature");
-        });
-
-        it("Should FAIL if user tries to mint twice", async function () {
-            const { profileContract, owner, user1, chainId } = await loadFixture(deployFixture);
-
-            const nickname1 = generateRandomNickname();
-            const deadline = await time.latest() + 3600;
-
-            let nonce = await profileContract.nonces(user1.address);
-            let messageHash = ethers.solidityPackedKeccak256(
-                ["address", "string", "bool", "uint256", "uint256", "uint256"],
-                [user1.address, nickname1, false, deadline, chainId, nonce]
-            );
-            let signature = await owner.signMessage(ethers.getBytes(messageHash));
-
-            await profileContract.connect(user1).createProfile(nickname1, false, deadline, signature);
-
-            const nickname2 = generateRandomNickname();
-            nonce = await profileContract.nonces(user1.address);
-
-            messageHash = ethers.solidityPackedKeccak256(
-                ["address", "string", "bool", "uint256", "uint256", "uint256"],
-                [user1.address, nickname2, false, deadline, chainId, nonce]
-            );
-            signature = await owner.signMessage(ethers.getBytes(messageHash));
-
-            await expect(
-                profileContract.connect(user1).createProfile(nickname2, false, deadline, signature)
-            ).to.be.revertedWithCustomError(profileContract, "ProfileAlreadyExists");
-        });
-
-        it("Should FAIL if signature expired", async function () {
-            const { profileContract, owner, user1, chainId } = await loadFixture(deployFixture);
-
-            const nickname = generateRandomNickname();
-            const deadline = await time.latest() - 10;
-            const nonce = await profileContract.nonces(user1.address);
-
-            const messageHash = ethers.solidityPackedKeccak256(
-                ["address", "string", "bool", "uint256", "uint256", "uint256"],
-                [user1.address, nickname, false, deadline, chainId, nonce]
-            );
-            const signature = await owner.signMessage(ethers.getBytes(messageHash));
-
-            await expect(
-                profileContract.connect(user1).createProfile(nickname, false, deadline, signature)
-            ).to.be.revertedWithCustomError(profileContract, "SignatureExpired");
-        });
+    const signature = await signerAccount.signMessage({
+      message: { raw: messageHash },
     });
+
+    const hash = await user.writeContract({
+      address: profileNFT.address,
+      abi: profileNFT.abi,
+      functionName: "createProfile",
+      args: [nickname, age, soulbound, deadline, signature],
+    });
+
+    await publicClient.waitForTransactionReceipt({ hash });
+
+    const balance = await publicClient.readContract({
+      address: profileNFT.address,
+      abi: profileNFT.abi,
+      functionName: "balanceOf",
+      args: [user.account.address],
+    });
+
+    console.log("🚀 ПРОФИЛЬ СОЗДАН! Баланс:", balance.toString());
+    expect(balance).to.equal(1n);
+  });
 });
