@@ -4,3 +4,7 @@ node_modules/
 dist/
 .env
 *.log
+substrate-contracts-node
+*.tar.gz
+node_modules/
+.idea/
