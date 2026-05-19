@@ -1,0 +1,104 @@
+   0.083557833s  INFO prepare_target{force=false package_id=pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance) target="pnl_engine"}: cargo::core::compiler::fingerprint: fingerprint error for pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("pnl_engine", ["lib"], "/Users/Oleg/WebstormProjects/untitled3/RustFinance/src/lib.rs", Edition2021) }
+   0.083587708s  INFO prepare_target{force=false package_id=pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance) target="pnl_engine"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/Oleg/WebstormProjects/untitled3/RustFinance/target/debug/.fingerprint/pnl-engine-afd178bec46512f4/lib-pnl_engine`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+   0.101478458s  INFO prepare_target{force=false package_id=pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance) target="pnl_engine"}: cargo::core::compiler::fingerprint: fingerprint error for pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance)/Check { test: true }/TargetInner { name_inferred: true, ..: lib_target("pnl_engine", ["lib"], "/Users/Oleg/WebstormProjects/untitled3/RustFinance/src/lib.rs", Edition2021) }
+   0.101492708s  INFO prepare_target{force=false package_id=pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance) target="pnl_engine"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/Oleg/WebstormProjects/untitled3/RustFinance/target/debug/.fingerprint/pnl-engine-5c407395d3e0f691/test-lib-pnl_engine`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+   0.102218500s  INFO prepare_target{force=false package_id=pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance) target="pnl-engine"}: cargo::core::compiler::fingerprint: fingerprint error for pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance)/Check { test: false }/TargetInner { name: "pnl-engine", doc: true, ..: with_path("/Users/Oleg/WebstormProjects/untitled3/RustFinance/src/main.rs", Edition2021) }
+   0.102225666s  INFO prepare_target{force=false package_id=pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance) target="pnl-engine"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/Oleg/WebstormProjects/untitled3/RustFinance/target/debug/.fingerprint/pnl-engine-504946bf502fb910/bin-pnl-engine`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+   0.102684000s  INFO prepare_target{force=false package_id=pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance) target="pnl-engine"}: cargo::core::compiler::fingerprint: fingerprint error for pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance)/Check { test: true }/TargetInner { name: "pnl-engine", doc: true, ..: with_path("/Users/Oleg/WebstormProjects/untitled3/RustFinance/src/main.rs", Edition2021) }
+   0.102688708s  INFO prepare_target{force=false package_id=pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance) target="pnl-engine"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/Oleg/WebstormProjects/untitled3/RustFinance/target/debug/.fingerprint/pnl-engine-9ad885b16be3aa40/test-bin-pnl-engine`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+    Checking pnl-engine v0.1.0 (/Users/Oleg/WebstormProjects/untitled3/RustFinance)
+error: could not compile `pnl-engine` (lib) due to 2 previous errors; 1 warning emitted
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `pnl-engine` (lib test) due to 2 previous errors; 2 warnings emitted
