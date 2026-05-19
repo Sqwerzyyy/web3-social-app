@@ -30,7 +30,10 @@ pub enum PnlError {
     MathOverflow,
 
     #[error("currency mismatch: expected {expected}, got {actual}")]
-    CurrencyMismatch { expected: Currency, actual: Currency },
+    CurrencyMismatch {
+        expected: Currency,
+        actual: Currency,
+    },
 
     #[error("realized PnL amounts must be non-negative")]
     InvalidRealizedAmount,
@@ -182,7 +185,10 @@ fn calc_annualized(roi_pct: Decimal, holding_days: i64) -> Result<Decimal, PnlEr
     if holding_days <= 0 {
         return Ok(Decimal::ZERO);
     }
-    checked_div(checked_mul(roi_pct, DAYS_YEAR)?, Decimal::from(holding_days))
+    checked_div(
+        checked_mul(roi_pct, DAYS_YEAR)?,
+        Decimal::from(holding_days),
+    )
 }
 
 #[derive(Debug, Clone, Default)]
@@ -269,16 +275,13 @@ impl<P: PriceProvider> PnlEngine<P> {
 
         let mut pos_pnls = Vec::with_capacity(filtered.len());
         for pos in &filtered {
-            let realized_totals = realized_by_symbol.get(pos.symbol()).cloned().unwrap_or_default();
+            let realized_totals = realized_by_symbol
+                .get(pos.symbol())
+                .cloned()
+                .unwrap_or_default();
             pos_pnls.push(
-                self.compute_position(
-                    pos.as_ref(),
-                    tf_from,
-                    tf_to,
-                    report_ccy,
-                    realized_totals,
-                )
-                .await?,
+                self.compute_position(pos.as_ref(), tf_from, tf_to, report_ccy, realized_totals)
+                    .await?,
             );
         }
 
@@ -313,7 +316,8 @@ impl<P: PriceProvider> PnlEngine<P> {
             let min_basis_ok = filter
                 .min_cost_basis_usd
                 .is_none_or(|min| event.cost_basis.amount >= min);
-            let tags_ok = filter.tags.is_empty() || selected_symbols.contains(event.symbol.as_str());
+            let tags_ok =
+                filter.tags.is_empty() || selected_symbols.contains(event.symbol.as_str());
 
             if in_timeframe && class_ok && currency_ok && symbol_ok && min_basis_ok && tags_ok {
                 events.push(event.clone());
@@ -368,7 +372,10 @@ impl<P: PriceProvider> PnlEngine<P> {
             currency: report_ccy.clone(),
             units,
             cost_basis: Money::new(cost_amount, report_ccy.clone()),
-            realized_cost_basis: Money::new(realized_totals.realized_cost_basis, report_ccy.clone()),
+            realized_cost_basis: Money::new(
+                realized_totals.realized_cost_basis,
+                report_ccy.clone(),
+            ),
             market_value: Money::new(market_amount, report_ccy.clone()),
             unrealized_pnl: Money::new(unrealized_amount, report_ccy.clone()),
             realized_pnl: Money::new(realized_totals.realized, report_ccy.clone()),

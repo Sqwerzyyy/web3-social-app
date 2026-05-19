@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package rwa.financial.v1;
+
+option go_package = "github.com/rwa-hub/contracts/gen/go/rwa/financial/v1;financialv1";
+
+message DecimalString {
+  string value = 1;
+}
+
+message GetBalanceRequest {
+  uint64 account_id = 1;
+}
+
+message GetBalanceResponse {
+  uint64 account_id = 1;
+  uint64 asset_id = 2;
+  DecimalString balance = 3;
+}
+
+message LockFundsRequest {
+  string idempotency_key = 1;
+  uint64 from_account_id = 2;
+  uint64 escrow_account_id = 3;
+  DecimalString amount = 4;
+}
+
+message LockFundsResponse {
+  uint64 tx_id = 1;
+  bool idempotent_replay = 2;
+}
+
+message ExecuteSettlementRequest {
+  string idempotency_key = 1;
+  string user_id = 2;
+  uint64 escrow_account_id = 3;
+  uint64 rwa_asset_id = 4;
+  DecimalString asset_amount = 5;
+  DecimalString fiat_cost = 6;
+}
+
+message ExecuteSettlementResponse {
+  uint64 tx_id = 1;
+  bool idempotent_replay = 2;
+}
+
+service FinancialEngine {
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+  rpc LockFunds(LockFundsRequest) returns (LockFundsResponse);
+  rpc ExecuteSettlement(ExecuteSettlementRequest) returns (ExecuteSettlementResponse);
+}

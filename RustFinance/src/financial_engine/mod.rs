@@ -17,21 +17,27 @@ pub const MAX_ASSET_DECIMALS: u32 = 18;
 pub struct AssetId(pub u64);
 
 impl fmt::Display for AssetId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct AccountId(pub u64);
 
 impl fmt::Display for AccountId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TxId(pub u64);
 
 impl fmt::Display for TxId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { write!(f, "{}", self.0) }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -50,11 +56,11 @@ pub enum AssetStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Asset {
-    pub id:       AssetId,
-    pub ticker:   String,
+    pub id: AssetId,
+    pub ticker: String,
     pub decimals: u32,
-    pub kind:     AssetKind,
-    pub status:   AssetStatus,
+    pub kind: AssetKind,
+    pub status: AssetStatus,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,16 +72,18 @@ pub enum AccountType {
 }
 
 impl AccountType {
-    fn can_overdraw(self) -> bool { matches!(self, Self::System) }
+    fn can_overdraw(self) -> bool {
+        matches!(self, Self::System)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Account {
-    pub id:           AccountId,
-    pub owner_id:     Option<Uuid>,
-    pub asset_id:     AssetId,
+    pub id: AccountId,
+    pub owner_id: Option<Uuid>,
+    pub asset_id: AssetId,
     pub account_type: AccountType,
-    pub balance:      Decimal,
+    pub balance: Decimal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -100,19 +108,19 @@ pub enum TransactionKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
-    pub tx_id:      TxId,
+    pub tx_id: TxId,
     pub account_id: AccountId,
-    pub amount:     Decimal,
-    pub direction:  EntryDirection,
+    pub amount: Decimal,
+    pub direction: EntryDirection,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Transaction {
-    pub id:        TxId,
+    pub id: TxId,
     pub timestamp: DateTime<Utc>,
-    pub status:    TransactionStatus,
-    pub kind:      TransactionKind,
-    pub entries:   Vec<Entry>,
+    pub status: TransactionStatus,
+    pub kind: TransactionKind,
+    pub entries: Vec<Entry>,
 }
 
 #[derive(Debug, Error)]
@@ -136,10 +144,17 @@ pub enum FinancialError {
     InvalidAmount,
 
     #[error("amount precision {scale} exceeds asset decimals {decimals} for asset {asset_id}")]
-    AmountPrecisionTooHigh { asset_id: AssetId, scale: u32, decimals: u32 },
+    AmountPrecisionTooHigh {
+        asset_id: AssetId,
+        scale: u32,
+        decimals: u32,
+    },
 
     #[error("accounts use different assets: {from_asset_id} and {to_asset_id}")]
-    AccountAssetMismatch { from_asset_id: AssetId, to_asset_id: AssetId },
+    AccountAssetMismatch {
+        from_asset_id: AssetId,
+        to_asset_id: AssetId,
+    },
 
     #[error("invalid account type for account {account_id}")]
     InvalidAccountType { account_id: AccountId },
@@ -153,14 +168,24 @@ pub enum FinancialError {
     #[error("user account not found for user {user_id} and asset {asset_id}")]
     UserAccountNotFound { user_id: Uuid, asset_id: AssetId },
 
-    #[error("insufficient funds in account {account_id}: available {available}, required {required}")]
-    InsufficientFunds { account_id: AccountId, available: Decimal, required: Decimal },
+    #[error(
+        "insufficient funds in account {account_id}: available {available}, required {required}"
+    )]
+    InsufficientFunds {
+        account_id: AccountId,
+        available: Decimal,
+        required: Decimal,
+    },
 
     #[error("transaction must have at least two entries")]
     TooFewEntries,
 
     #[error("unbalanced transaction for asset {asset_id}: debits {debits}, credits {credits}")]
-    UnbalancedTransaction { asset_id: AssetId, debits: Decimal, credits: Decimal },
+    UnbalancedTransaction {
+        asset_id: AssetId,
+        debits: Decimal,
+        credits: Decimal,
+    },
 
     #[error("no eligible escrow account found")]
     NoEligibleEscrow,
@@ -189,7 +214,9 @@ pub trait LedgerClock: Clone + Send + Sync + 'static {
 pub struct SystemClock;
 
 impl LedgerClock for SystemClock {
-    fn now(&self) -> DateTime<Utc> { Utc::now() }
+    fn now(&self) -> DateTime<Utc> {
+        Utc::now()
+    }
 }
 
 #[derive(Debug)]
@@ -199,11 +226,15 @@ pub struct FinancialEngine<C = SystemClock> {
 }
 
 impl FinancialEngine<SystemClock> {
-    pub fn new() -> Self { Self::with_clock(SystemClock) }
+    pub fn new() -> Self {
+        Self::with_clock(SystemClock)
+    }
 }
 
 impl Default for FinancialEngine<SystemClock> {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<C: Clone> Clone for FinancialEngine<C> {
@@ -234,7 +265,10 @@ impl<C: LedgerClock> FinancialEngine<C> {
         }
 
         let ticker = normalize_ticker(ticker.as_ref())?;
-        let mut state = self.state.write().map_err(|_| FinancialError::LockPoisoned)?;
+        let mut state = self
+            .state
+            .write()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         let id = state.next_asset_id()?;
         let asset = Asset {
             id,
@@ -253,7 +287,10 @@ impl<C: LedgerClock> FinancialEngine<C> {
         asset_id: AssetId,
         status: AssetStatus,
     ) -> Result<Asset, FinancialError> {
-        let mut state = self.state.write().map_err(|_| FinancialError::LockPoisoned)?;
+        let mut state = self
+            .state
+            .write()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         let asset = state
             .assets
             .get_mut(&asset_id)
@@ -278,7 +315,10 @@ impl<C: LedgerClock> FinancialEngine<C> {
     ) -> Result<Account, FinancialError> {
         validate_owner(owner_id, account_type)?;
 
-        let mut state = self.state.write().map_err(|_| FinancialError::LockPoisoned)?;
+        let mut state = self
+            .state
+            .write()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         state.asset(asset_id)?;
         state.create_account(owner_id, asset_id, account_type)
     }
@@ -290,7 +330,10 @@ impl<C: LedgerClock> FinancialEngine<C> {
         amount: Decimal,
     ) -> Result<TxId, FinancialError> {
         let timestamp = self.clock.now();
-        let mut state = self.state.write().map_err(|_| FinancialError::LockPoisoned)?;
+        let mut state = self
+            .state
+            .write()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         let tx = state.execute_transfer_at(from, to, amount, timestamp)?;
         debug!(tx_id = %tx.id, from = %from, to = %to, "transfer posted");
         Ok(tx.id)
@@ -303,7 +346,10 @@ impl<C: LedgerClock> FinancialEngine<C> {
         amount: Decimal,
     ) -> Result<TxId, FinancialError> {
         let timestamp = self.clock.now();
-        let mut state = self.state.write().map_err(|_| FinancialError::LockPoisoned)?;
+        let mut state = self
+            .state
+            .write()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         let tx = state.lock_funds_at(from, escrow, amount, timestamp)?;
         debug!(tx_id = %tx.id, from = %from, escrow = %escrow, "funds locked");
         Ok(tx.id)
@@ -321,7 +367,10 @@ impl<C: LedgerClock> FinancialEngine<C> {
         }
 
         let timestamp = self.clock.now();
-        let mut state = self.state.write().map_err(|_| FinancialError::LockPoisoned)?;
+        let mut state = self
+            .state
+            .write()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         let escrow = state.find_single_eligible_escrow(user_id, fiat_cost)?;
         let tx = state.settle_rwa_mint_at(
             user_id,
@@ -344,7 +393,10 @@ impl<C: LedgerClock> FinancialEngine<C> {
         fiat_cost: Decimal,
     ) -> Result<TxId, FinancialError> {
         let timestamp = self.clock.now();
-        let mut state = self.state.write().map_err(|_| FinancialError::LockPoisoned)?;
+        let mut state = self
+            .state
+            .write()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         let tx = state.settle_rwa_mint_at(
             user_id,
             escrow,
@@ -358,7 +410,10 @@ impl<C: LedgerClock> FinancialEngine<C> {
     }
 
     pub fn account(&self, account_id: AccountId) -> Result<Account, FinancialError> {
-        let state = self.state.read().map_err(|_| FinancialError::LockPoisoned)?;
+        let state = self
+            .state
+            .read()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         state
             .accounts
             .get(&account_id)
@@ -367,7 +422,10 @@ impl<C: LedgerClock> FinancialEngine<C> {
     }
 
     pub fn asset(&self, asset_id: AssetId) -> Result<Asset, FinancialError> {
-        let state = self.state.read().map_err(|_| FinancialError::LockPoisoned)?;
+        let state = self
+            .state
+            .read()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         state
             .assets
             .get(&asset_id)
@@ -387,35 +445,41 @@ impl<C: LedgerClock> FinancialEngine<C> {
     }
 
     pub fn total_balance_for_asset(&self, asset_id: AssetId) -> Result<Decimal, FinancialError> {
-        let state = self.state.read().map_err(|_| FinancialError::LockPoisoned)?;
+        let state = self
+            .state
+            .read()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         state.total_balance_for_asset(asset_id)
     }
 
     pub fn verify_ledger(&self) -> Result<(), FinancialError> {
-        let state = self.state.read().map_err(|_| FinancialError::LockPoisoned)?;
+        let state = self
+            .state
+            .read()
+            .map_err(|_| FinancialError::LockPoisoned)?;
         state.verify_ledger()
     }
 }
 
 #[derive(Debug)]
 struct FinancialState {
-    assets:       BTreeMap<AssetId, Asset>,
-    accounts:     BTreeMap<AccountId, Account>,
+    assets: BTreeMap<AssetId, Asset>,
+    accounts: BTreeMap<AccountId, Account>,
     transactions: BTreeMap<TxId, Transaction>,
-    next_asset:   u64,
+    next_asset: u64,
     next_account: u64,
-    next_tx:      u64,
+    next_tx: u64,
 }
 
 impl Default for FinancialState {
     fn default() -> Self {
         Self {
-            assets:       BTreeMap::new(),
-            accounts:     BTreeMap::new(),
+            assets: BTreeMap::new(),
+            accounts: BTreeMap::new(),
             transactions: BTreeMap::new(),
-            next_asset:   1,
+            next_asset: 1,
             next_account: 1,
-            next_tx:      1,
+            next_tx: 1,
         }
     }
 }
@@ -423,19 +487,28 @@ impl Default for FinancialState {
 impl FinancialState {
     fn next_asset_id(&mut self) -> Result<AssetId, FinancialError> {
         let id = AssetId(self.next_asset);
-        self.next_asset = self.next_asset.checked_add(1).ok_or(FinancialError::Overflow)?;
+        self.next_asset = self
+            .next_asset
+            .checked_add(1)
+            .ok_or(FinancialError::Overflow)?;
         Ok(id)
     }
 
     fn next_account_id(&mut self) -> Result<AccountId, FinancialError> {
         let id = AccountId(self.next_account);
-        self.next_account = self.next_account.checked_add(1).ok_or(FinancialError::Overflow)?;
+        self.next_account = self
+            .next_account
+            .checked_add(1)
+            .ok_or(FinancialError::Overflow)?;
         Ok(id)
     }
 
     fn next_tx_id(&mut self) -> Result<TxId, FinancialError> {
         let id = TxId(self.next_tx);
-        self.next_tx = self.next_tx.checked_add(1).ok_or(FinancialError::Overflow)?;
+        self.next_tx = self
+            .next_tx
+            .checked_add(1)
+            .ok_or(FinancialError::Overflow)?;
         Ok(id)
     }
 
@@ -482,8 +555,16 @@ impl FinancialState {
             TransactionKind::Transfer,
             timestamp,
             vec![
-                NewEntry { account_id: from, amount, direction: EntryDirection::Credit },
-                NewEntry { account_id: to, amount, direction: EntryDirection::Debit },
+                NewEntry {
+                    account_id: from,
+                    amount,
+                    direction: EntryDirection::Credit,
+                },
+                NewEntry {
+                    account_id: to,
+                    amount,
+                    direction: EntryDirection::Debit,
+                },
             ],
         )
     }
@@ -513,8 +594,16 @@ impl FinancialState {
             TransactionKind::LockFunds,
             timestamp,
             vec![
-                NewEntry { account_id: from, amount, direction: EntryDirection::Credit },
-                NewEntry { account_id: escrow, amount, direction: EntryDirection::Debit },
+                NewEntry {
+                    account_id: from,
+                    amount,
+                    direction: EntryDirection::Credit,
+                },
+                NewEntry {
+                    account_id: escrow,
+                    amount,
+                    direction: EntryDirection::Debit,
+                },
             ],
         )
     }
@@ -551,7 +640,10 @@ impl FinancialState {
 
         let user_rwa = self
             .find_account(Some(user_id), rwa_asset_id, AccountType::User)
-            .ok_or(FinancialError::UserAccountNotFound { user_id, asset_id: rwa_asset_id })?;
+            .ok_or(FinancialError::UserAccountNotFound {
+                user_id,
+                asset_id: rwa_asset_id,
+            })?;
         let platform = self.ensure_account(None, escrow_account.asset_id, AccountType::Revenue)?;
         let system_rwa = self.ensure_account(None, rwa_asset_id, AccountType::System)?;
 
@@ -559,23 +651,38 @@ impl FinancialState {
             TransactionKind::RwaMintSettlement,
             timestamp,
             vec![
-                NewEntry { account_id: escrow, amount: fiat_cost, direction: EntryDirection::Credit },
-                NewEntry { account_id: platform, amount: fiat_cost, direction: EntryDirection::Debit },
-                NewEntry { account_id: user_rwa, amount: asset_amount, direction: EntryDirection::Debit },
-                NewEntry { account_id: system_rwa, amount: asset_amount, direction: EntryDirection::Credit },
+                NewEntry {
+                    account_id: escrow,
+                    amount: fiat_cost,
+                    direction: EntryDirection::Credit,
+                },
+                NewEntry {
+                    account_id: platform,
+                    amount: fiat_cost,
+                    direction: EntryDirection::Debit,
+                },
+                NewEntry {
+                    account_id: user_rwa,
+                    amount: asset_amount,
+                    direction: EntryDirection::Debit,
+                },
+                NewEntry {
+                    account_id: system_rwa,
+                    amount: asset_amount,
+                    direction: EntryDirection::Credit,
+                },
             ],
         )
     }
 
-    fn ensure_same_asset(
-        &self,
-        from: AccountId,
-        to: AccountId,
-    ) -> Result<AssetId, FinancialError> {
+    fn ensure_same_asset(&self, from: AccountId, to: AccountId) -> Result<AssetId, FinancialError> {
         let from_asset_id = self.account(from)?.asset_id;
         let to_asset_id = self.account(to)?.asset_id;
         if from_asset_id != to_asset_id {
-            return Err(FinancialError::AccountAssetMismatch { from_asset_id, to_asset_id });
+            return Err(FinancialError::AccountAssetMismatch {
+                from_asset_id,
+                to_asset_id,
+            });
         }
 
         Ok(from_asset_id)
@@ -615,20 +722,17 @@ impl FinancialState {
         user_id: Uuid,
         fiat_cost: Decimal,
     ) -> Result<AccountId, FinancialError> {
-        let mut matches = self
-            .accounts
-            .iter()
-            .filter_map(|(id, account)| {
-                if account.owner_id != Some(user_id) || account.account_type != AccountType::Escrow {
-                    return None;
-                }
+        let mut matches = self.accounts.iter().filter_map(|(id, account)| {
+            if account.owner_id != Some(user_id) || account.account_type != AccountType::Escrow {
+                return None;
+            }
 
-                let asset = self.assets.get(&account.asset_id)?;
-                let scale_ok = validate_amount(asset, fiat_cost).is_ok();
-                let kind_ok = matches!(asset.kind, AssetKind::Fiat | AssetKind::Crypto);
+            let asset = self.assets.get(&account.asset_id)?;
+            let scale_ok = validate_amount(asset, fiat_cost).is_ok();
+            let kind_ok = matches!(asset.kind, AssetKind::Fiat | AssetKind::Crypto);
 
-                (scale_ok && kind_ok && account.balance >= fiat_cost).then_some(*id)
-            });
+            (scale_ok && kind_ok && account.balance >= fiat_cost).then_some(*id)
+        });
 
         let first = matches.next().ok_or(FinancialError::NoEligibleEscrow)?;
         if matches.next().is_some() {
@@ -665,17 +769,27 @@ impl FinancialState {
                 .or_insert((Decimal::ZERO, Decimal::ZERO));
             match entry.direction {
                 EntryDirection::Debit => {
-                    totals.0 = totals.0.checked_add(entry.amount).ok_or(FinancialError::Overflow)?;
+                    totals.0 = totals
+                        .0
+                        .checked_add(entry.amount)
+                        .ok_or(FinancialError::Overflow)?;
                 }
                 EntryDirection::Credit => {
-                    totals.1 = totals.1.checked_add(entry.amount).ok_or(FinancialError::Overflow)?;
+                    totals.1 = totals
+                        .1
+                        .checked_add(entry.amount)
+                        .ok_or(FinancialError::Overflow)?;
                 }
             }
 
             let delta = deltas.entry(entry.account_id).or_insert(Decimal::ZERO);
             *delta = match entry.direction {
-                EntryDirection::Debit => delta.checked_add(entry.amount).ok_or(FinancialError::Overflow)?,
-                EntryDirection::Credit => delta.checked_sub(entry.amount).ok_or(FinancialError::Overflow)?,
+                EntryDirection::Debit => delta
+                    .checked_add(entry.amount)
+                    .ok_or(FinancialError::Overflow)?,
+                EntryDirection::Credit => delta
+                    .checked_sub(entry.amount)
+                    .ok_or(FinancialError::Overflow)?,
             };
         }
 
@@ -691,9 +805,14 @@ impl FinancialState {
 
         for (account_id, delta) in &deltas {
             let account = self.account(*account_id)?;
-            let next = account.balance.checked_add(*delta).ok_or(FinancialError::Overflow)?;
+            let next = account
+                .balance
+                .checked_add(*delta)
+                .ok_or(FinancialError::Overflow)?;
             if !account.account_type.can_overdraw() && next < Decimal::ZERO {
-                let required = Decimal::ZERO.checked_sub(*delta).ok_or(FinancialError::Overflow)?;
+                let required = Decimal::ZERO
+                    .checked_sub(*delta)
+                    .ok_or(FinancialError::Overflow)?;
                 return Err(FinancialError::InsufficientFunds {
                     account_id: *account_id,
                     available: account.balance,
@@ -708,7 +827,10 @@ impl FinancialState {
                 .accounts
                 .get_mut(account_id)
                 .ok_or(FinancialError::AccountNotFound(*account_id))?;
-            account.balance = account.balance.checked_add(*delta).ok_or(FinancialError::Overflow)?;
+            account.balance = account
+                .balance
+                .checked_add(*delta)
+                .ok_or(FinancialError::Overflow)?;
         }
 
         let entries = entries
@@ -739,7 +861,8 @@ impl FinancialState {
             .values()
             .filter(|account| account.asset_id == asset_id)
             .try_fold(Decimal::ZERO, |sum, account| {
-                sum.checked_add(account.balance).ok_or(FinancialError::Overflow)
+                sum.checked_add(account.balance)
+                    .ok_or(FinancialError::Overflow)
             })
     }
 
@@ -753,17 +876,27 @@ impl FinancialState {
                     .or_insert((Decimal::ZERO, Decimal::ZERO));
                 match entry.direction {
                     EntryDirection::Debit => {
-                        totals.0 = totals.0.checked_add(entry.amount).ok_or(FinancialError::Overflow)?;
+                        totals.0 = totals
+                            .0
+                            .checked_add(entry.amount)
+                            .ok_or(FinancialError::Overflow)?;
                     }
                     EntryDirection::Credit => {
-                        totals.1 = totals.1.checked_add(entry.amount).ok_or(FinancialError::Overflow)?;
+                        totals.1 = totals
+                            .1
+                            .checked_add(entry.amount)
+                            .ok_or(FinancialError::Overflow)?;
                     }
                 }
             }
 
             for (asset_id, (debits, credits)) in by_asset {
                 if debits != credits {
-                    return Err(FinancialError::UnbalancedTransaction { asset_id, debits, credits });
+                    return Err(FinancialError::UnbalancedTransaction {
+                        asset_id,
+                        debits,
+                        credits,
+                    });
                 }
             }
         }
@@ -775,8 +908,8 @@ impl FinancialState {
 #[derive(Debug, Clone, Copy)]
 struct NewEntry {
     account_id: AccountId,
-    amount:     Decimal,
-    direction:  EntryDirection,
+    amount: Decimal,
+    direction: EntryDirection,
 }
 
 fn normalize_ticker(ticker: &str) -> Result<String, FinancialError> {
