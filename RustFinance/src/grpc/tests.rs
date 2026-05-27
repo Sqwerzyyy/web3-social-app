@@ -3,6 +3,7 @@ use super::proto::{DecimalString, GetBalanceRequest, LockFundsRequest};
 use super::*;
 use crate::financial_engine::{AccountType, AssetKind, FinancialEngine};
 use rust_decimal_macros::dec;
+use tonic::Code;
 
 #[tokio::test]
 async fn get_balance_returns_decimal_string() {
@@ -71,4 +72,25 @@ async fn lock_funds_is_idempotent() {
     assert!(replay.idempotent_replay);
     assert_eq!(ledger.account_balance(user.id).unwrap(), dec!(25.00));
     assert_eq!(ledger.account_balance(escrow.id).unwrap(), dec!(25.00));
+}
+
+#[tokio::test]
+async fn mutating_rpc_requires_v4_idempotency_key() {
+    let ledger = FinancialEngine::new();
+    let bridge = FinancialGrpcBridge::new(ledger);
+
+    let error = bridge
+        .lock_funds(Request::new(LockFundsRequest {
+            idempotency_key: Uuid::nil().to_string(),
+            from_account_id: 1,
+            escrow_account_id: 2,
+            amount: Some(DecimalString {
+                value: "25.00".to_string(),
+            }),
+        }))
+        .await
+        .unwrap_err();
+
+    assert_eq!(error.code(), Code::InvalidArgument);
+    assert!(error.message().contains("UUID v4"));
 }

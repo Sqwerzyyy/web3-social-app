@@ -32,6 +32,8 @@ pub enum RiskMode {
     Halt,
 }
 
+pub type CircuitBreaker = RiskMode;
+
 #[derive(Debug, Error)]
 pub enum OracleError {
     #[error("source unavailable: {0}")]
@@ -380,16 +382,19 @@ impl PriceProvider for OraclePriceProvider {
                     symbol: symbol.to_string(),
                     currency: currency.as_str().to_string(),
                 })?;
-        let now_ts = Utc::now().timestamp().try_into().unwrap_or(0);
+        let now_ts = u64::try_from(Utc::now().timestamp())
+            .map_err(|_| PriceError::Parse("current timestamp before unix epoch".to_string()))?;
         let feed = self
             .risk
             .guarded_price(asset_id, now_ts)
             .await
             .map_err(|error| PriceError::Parse(error.to_string()))?;
+        let feed_ts = i64::try_from(feed.timestamp)
+            .map_err(|_| PriceError::Parse("oracle timestamp out of range".to_string()))?;
         let timestamp = Utc
-            .timestamp_opt(feed.timestamp as i64, 0)
+            .timestamp_opt(feed_ts, 0)
             .single()
-            .unwrap_or_else(Utc::now);
+            .ok_or_else(|| PriceError::Parse("invalid oracle timestamp".to_string()))?;
 
         Price::new(feed.price, currency.clone(), timestamp)
             .ok_or(PriceError::NonPositive(feed.price))
@@ -543,6 +548,7 @@ fn calculate_twap(
     let mut weighted_sum = Decimal::ZERO;
     let mut weighted_secs = 0_u64;
 
+    // TWAP weights each active price by the seconds it governed inside the window.
     for (timestamp, price) in ordered.range(window_start..=now_ts) {
         if *timestamp > cursor {
             let span = timestamp

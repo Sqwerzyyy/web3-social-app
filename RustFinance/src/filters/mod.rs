@@ -1,5 +1,5 @@
 use crate::assets::{AssetClass, AssetPosition, Currency, Tag};
-use chrono::{DateTime, Datelike, Duration, Utc};
+use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -24,15 +24,10 @@ impl Timeframe {
             Self::Last(days) => (now - Duration::days(*days as i64), now),
             Self::Range { from, to } => (*from, *to),
             Self::Ytd => {
-                let jan1 = now
-                    .with_month(1)
-                    .unwrap()
-                    .with_day(1)
-                    .unwrap()
-                    .date_naive()
-                    .and_hms_opt(0, 0, 0)
-                    .unwrap()
-                    .and_utc();
+                let jan1 = match Utc.with_ymd_and_hms(now.year(), 1, 1, 0, 0, 0).single() {
+                    Some(jan1) => jan1,
+                    None => now,
+                };
                 (jan1, now)
             }
             Self::AllTime => (earliest.unwrap_or(now), now),

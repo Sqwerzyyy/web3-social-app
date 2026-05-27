@@ -8,12 +8,15 @@ use crate::financial_engine::{
 };
 use crate::oracle::{OracleError, RiskEngine};
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
+use thiserror::Error;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
-use uuid::Uuid;
+use tracing::{info_span, Instrument};
+use uuid::{Uuid, Version};
 
 pub mod proto {
     tonic::include_proto!("rwa.financial.v1");
@@ -39,12 +42,79 @@ pub enum IdempotencyOperation {
     ExecuteSettlement,
 }
 
+#[cfg(feature = "postgres-idempotency")]
+impl IdempotencyOperation {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::LockFunds => "LockFunds",
+            Self::ExecuteSettlement => "ExecuteSettlement",
+        }
+    }
+
+    fn from_str(value: &str) -> Result<Self, RpcError> {
+        match value {
+            "LockFunds" => Ok(Self::LockFunds),
+            "ExecuteSettlement" => Ok(Self::ExecuteSettlement),
+            _ => Err(RpcError::InvalidCachedResponse),
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum RpcError {
+    #[error("{field} is required")]
+    MissingDecimal { field: &'static str },
+
+    #[error("{field} must be a decimal string")]
+    InvalidDecimal { field: &'static str },
+
+    #[error("{field} must be UUID")]
+    InvalidUuid { field: &'static str },
+
+    #[error("{field} must be UUID v4")]
+    InvalidUuidVersion { field: &'static str },
+
+    #[error("idempotency key reused for another operation")]
+    IdempotencyKeyConflict,
+
+    #[error("idempotency response type mismatch")]
+    IdempotencyResponseMismatch,
+
+    #[error("idempotency store lock poisoned")]
+    IdempotencyStorePoisoned,
+
+    #[error("invalid cached idempotency response")]
+    InvalidCachedResponse,
+
+    #[error("database error: {0}")]
+    Database(String),
+}
+
+impl From<RpcError> for Status {
+    fn from(error: RpcError) -> Self {
+        match error {
+            RpcError::MissingDecimal { .. }
+            | RpcError::InvalidDecimal { .. }
+            | RpcError::InvalidUuid { .. }
+            | RpcError::InvalidUuidVersion { .. } => Status::invalid_argument(error.to_string()),
+            RpcError::IdempotencyKeyConflict => Status::failed_precondition(error.to_string()),
+            RpcError::IdempotencyResponseMismatch
+            | RpcError::IdempotencyStorePoisoned
+            | RpcError::InvalidCachedResponse
+            | RpcError::Database(_) => Status::internal(error.to_string()),
+        }
+    }
+}
+
+type IdempotencyCallback<'a> = Box<dyn FnOnce() -> Result<IdempotentResponse, Status> + Send + 'a>;
+
+#[async_trait::async_trait]
 pub trait IdempotencyStore: Send + Sync {
-    fn execute_once(
+    async fn execute_once(
         &self,
         key: Uuid,
         operation: IdempotencyOperation,
-        execute: &mut dyn FnMut() -> Result<IdempotentResponse, Status>,
+        execute: IdempotencyCallback<'_>,
     ) -> Result<(IdempotentResponse, bool), Status>;
 }
 
@@ -59,22 +129,21 @@ impl InMemoryIdempotencyStore {
     }
 }
 
+#[async_trait::async_trait]
 impl IdempotencyStore for InMemoryIdempotencyStore {
-    fn execute_once(
+    async fn execute_once(
         &self,
         key: Uuid,
         operation: IdempotencyOperation,
-        execute: &mut dyn FnMut() -> Result<IdempotentResponse, Status>,
+        execute: IdempotencyCallback<'_>,
     ) -> Result<(IdempotentResponse, bool), Status> {
         let mut records = self
             .records
             .lock()
-            .map_err(|_| Status::internal("idempotency store lock poisoned"))?;
+            .map_err(|_| Status::from(RpcError::IdempotencyStorePoisoned))?;
         match records.get(&key) {
             Some(response) if response.operation() == operation => Ok((response.clone(), true)),
-            Some(_) => Err(Status::failed_precondition(
-                "idempotency key reused for another operation",
-            )),
+            Some(_) => Err(Status::from(RpcError::IdempotencyKeyConflict)),
             None => {
                 let response = execute()?;
                 records.insert(key, response.clone());
@@ -91,6 +160,175 @@ impl IdempotentResponse {
             Self::ExecuteSettlement(_) => IdempotencyOperation::ExecuteSettlement,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "operation", rename_all = "snake_case")]
+enum CachedIdempotentResponse {
+    LockFunds { tx_id: u64 },
+    ExecuteSettlement { tx_id: u64 },
+}
+
+impl From<&IdempotentResponse> for CachedIdempotentResponse {
+    fn from(response: &IdempotentResponse) -> Self {
+        match response {
+            IdempotentResponse::LockFunds(response) => Self::LockFunds {
+                tx_id: response.tx_id,
+            },
+            IdempotentResponse::ExecuteSettlement(response) => Self::ExecuteSettlement {
+                tx_id: response.tx_id,
+            },
+        }
+    }
+}
+
+impl TryFrom<CachedIdempotentResponse> for IdempotentResponse {
+    type Error = RpcError;
+
+    fn try_from(value: CachedIdempotentResponse) -> Result<Self, Self::Error> {
+        match value {
+            CachedIdempotentResponse::LockFunds { tx_id } => {
+                Ok(Self::LockFunds(LockFundsResponse {
+                    tx_id,
+                    idempotent_replay: false,
+                }))
+            }
+            CachedIdempotentResponse::ExecuteSettlement { tx_id } => {
+                Ok(Self::ExecuteSettlement(ExecuteSettlementResponse {
+                    tx_id,
+                    idempotent_replay: false,
+                }))
+            }
+        }
+    }
+}
+
+#[cfg(feature = "postgres-idempotency")]
+#[derive(Clone)]
+pub struct PostgresIdempotencyStore {
+    pool: sqlx::PgPool,
+}
+
+#[cfg(feature = "postgres-idempotency")]
+impl PostgresIdempotencyStore {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+#[cfg(feature = "postgres-idempotency")]
+#[async_trait::async_trait]
+impl IdempotencyStore for PostgresIdempotencyStore {
+    async fn execute_once(
+        &self,
+        key: Uuid,
+        operation: IdempotencyOperation,
+        execute: IdempotencyCallback<'_>,
+    ) -> Result<(IdempotentResponse, bool), Status> {
+        use sqlx::Row;
+
+        let mut tx = self.pool.begin().await.map_err(map_sqlx_error)?;
+        sqlx::query(
+            r#"
+            INSERT INTO grpc_idempotency_keys (idempotency_key, operation, status)
+            VALUES ($1, $2, 'Started')
+            ON CONFLICT (idempotency_key) DO NOTHING
+            "#,
+        )
+        .bind(key)
+        .bind(operation.as_str())
+        .execute(&mut *tx)
+        .await
+        .map_err(map_sqlx_error)?;
+
+        // SELECT FOR UPDATE serializes concurrent retries for the same key.
+        let row = sqlx::query(
+            r#"
+            SELECT operation, status, response_json
+            FROM grpc_idempotency_keys
+            WHERE idempotency_key = $1
+            FOR UPDATE
+            "#,
+        )
+        .bind(key)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(map_sqlx_error)?;
+
+        let stored_operation: String = row.try_get("operation").map_err(map_sqlx_error)?;
+        let stored_status: String = row.try_get("status").map_err(map_sqlx_error)?;
+        let response_json: Option<serde_json::Value> =
+            row.try_get("response_json").map_err(map_sqlx_error)?;
+        let stored_operation = IdempotencyOperation::from_str(&stored_operation)?;
+        if stored_operation != operation {
+            return Err(Status::from(RpcError::IdempotencyKeyConflict));
+        }
+
+        if stored_status == "Completed" {
+            let value = response_json.ok_or(RpcError::InvalidCachedResponse)?;
+            let cached: CachedIdempotentResponse =
+                serde_json::from_value(value).map_err(|_| RpcError::InvalidCachedResponse)?;
+            let response = IdempotentResponse::try_from(cached)?;
+            if response.operation() != operation {
+                return Err(Status::from(RpcError::InvalidCachedResponse));
+            }
+            tx.commit().await.map_err(map_sqlx_error)?;
+            return Ok((response, true));
+        }
+
+        sqlx::query(
+            r#"
+            UPDATE grpc_idempotency_keys
+            SET status = 'Started', updated_at = NOW()
+            WHERE idempotency_key = $1
+            "#,
+        )
+        .bind(key)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_sqlx_error)?;
+
+        let response = match execute() {
+            Ok(response) => response,
+            Err(status) => {
+                sqlx::query(
+                    r#"
+                    UPDATE grpc_idempotency_keys
+                    SET status = 'Failed', updated_at = NOW()
+                    WHERE idempotency_key = $1
+                    "#,
+                )
+                .bind(key)
+                .execute(&mut *tx)
+                .await
+                .map_err(map_sqlx_error)?;
+                tx.commit().await.map_err(map_sqlx_error)?;
+                return Err(status);
+            }
+        };
+        let response_json = serde_json::to_value(CachedIdempotentResponse::from(&response))
+            .map_err(|_| Status::from(RpcError::InvalidCachedResponse))?;
+
+        sqlx::query(
+            r#"
+            UPDATE grpc_idempotency_keys
+            SET status = 'Completed', response_json = $2, updated_at = NOW()
+            WHERE idempotency_key = $1
+            "#,
+        )
+        .bind(key)
+        .bind(response_json)
+        .execute(&mut *tx)
+        .await
+        .map_err(map_sqlx_error)?;
+        tx.commit().await.map_err(map_sqlx_error)?;
+        Ok((response, false))
+    }
+}
+
+#[cfg(feature = "postgres-idempotency")]
+fn map_sqlx_error(error: sqlx::Error) -> Status {
+    Status::from(RpcError::Database(error.to_string()))
 }
 
 #[derive(Clone)]
@@ -152,90 +390,128 @@ where
         request: Request<GetBalanceRequest>,
     ) -> Result<Response<GetBalanceResponse>, Status> {
         let request = request.into_inner();
-        let account = self
-            .ledger
-            .account(AccountId(request.account_id))
-            .map_err(map_financial_error)?;
+        let span = info_span!(
+            "grpc.transaction",
+            rpc = "GetBalance",
+            span_id = %Uuid::new_v4(),
+            account_id = request.account_id
+        );
+        async move {
+            let account = self
+                .ledger
+                .account(AccountId(request.account_id))
+                .map_err(map_financial_error)?;
 
-        Ok(Response::new(GetBalanceResponse {
-            account_id: account.id.0,
-            asset_id: account.asset_id.0,
-            balance: Some(decimal_string(account.balance)),
-        }))
+            Ok(Response::new(GetBalanceResponse {
+                account_id: account.id.0,
+                asset_id: account.asset_id.0,
+                balance: Some(decimal_string(account.balance)),
+            }))
+        }
+        .instrument(span)
+        .await
     }
 
     async fn lock_funds(
         &self,
         request: Request<LockFundsRequest>,
     ) -> Result<Response<LockFundsResponse>, Status> {
-        self.ensure_trading_open()?;
         let request = request.into_inner();
-        let key = parse_uuid(&request.idempotency_key, "idempotency_key")?;
-        let amount = parse_decimal_field(request.amount.as_ref(), "amount")?;
+        let span = info_span!(
+            "grpc.transaction",
+            rpc = "LockFunds",
+            span_id = %Uuid::new_v4(),
+            idempotency_key = %request.idempotency_key
+        );
+        async move {
+            self.ensure_trading_open()?;
+            let key = parse_uuid_v4(&request.idempotency_key, "idempotency_key")?;
+            let amount = parse_decimal_field(request.amount.as_ref(), "amount")?;
 
-        let (response, replay) =
-            self.idempotency
-                .execute_once(key, IdempotencyOperation::LockFunds, &mut || {
-                    let tx_id = self
-                        .ledger
-                        .lock_funds(
-                            AccountId(request.from_account_id),
-                            AccountId(request.escrow_account_id),
-                            amount,
-                        )
-                        .map_err(map_financial_error)?;
-                    Ok(IdempotentResponse::LockFunds(LockFundsResponse {
-                        tx_id: tx_id.0,
-                        idempotent_replay: false,
-                    }))
-                })?;
-        let IdempotentResponse::LockFunds(mut response) = response else {
-            return Err(Status::internal("idempotency response type mismatch"));
-        };
-        response.idempotent_replay = replay;
+            let (response, replay) = self
+                .idempotency
+                .execute_once(
+                    key,
+                    IdempotencyOperation::LockFunds,
+                    Box::new(move || {
+                        let tx_id = self
+                            .ledger
+                            .lock_funds(
+                                AccountId(request.from_account_id),
+                                AccountId(request.escrow_account_id),
+                                amount,
+                            )
+                            .map_err(map_financial_error)?;
+                        Ok(IdempotentResponse::LockFunds(LockFundsResponse {
+                            tx_id: tx_id.0,
+                            idempotent_replay: false,
+                        }))
+                    }),
+                )
+                .await?;
+            let IdempotentResponse::LockFunds(mut response) = response else {
+                return Err(Status::from(RpcError::IdempotencyResponseMismatch));
+            };
+            response.idempotent_replay = replay;
 
-        Ok(Response::new(response))
+            Ok(Response::new(response))
+        }
+        .instrument(span)
+        .await
     }
 
     async fn execute_settlement(
         &self,
         request: Request<ExecuteSettlementRequest>,
     ) -> Result<Response<ExecuteSettlementResponse>, Status> {
-        self.ensure_trading_open()?;
         let request = request.into_inner();
-        let key = parse_uuid(&request.idempotency_key, "idempotency_key")?;
-        let user_id = parse_uuid(&request.user_id, "user_id")?;
-        let asset_amount = parse_decimal_field(request.asset_amount.as_ref(), "asset_amount")?;
-        let fiat_cost = parse_decimal_field(request.fiat_cost.as_ref(), "fiat_cost")?;
+        let span = info_span!(
+            "grpc.transaction",
+            rpc = "ExecuteSettlement",
+            span_id = %Uuid::new_v4(),
+            idempotency_key = %request.idempotency_key
+        );
+        async move {
+            self.ensure_trading_open()?;
+            let key = parse_uuid_v4(&request.idempotency_key, "idempotency_key")?;
+            let user_id = parse_uuid(&request.user_id, "user_id")?;
+            let asset_amount = parse_decimal_field(request.asset_amount.as_ref(), "asset_amount")?;
+            let fiat_cost = parse_decimal_field(request.fiat_cost.as_ref(), "fiat_cost")?;
 
-        let (response, replay) = self.idempotency.execute_once(
-            key,
-            IdempotencyOperation::ExecuteSettlement,
-            &mut || {
-                let tx_id = self
-                    .ledger
-                    .settle_rwa_mint_from_escrow(
-                        user_id,
-                        AccountId(request.escrow_account_id),
-                        AssetId(request.rwa_asset_id),
-                        asset_amount,
-                        fiat_cost,
-                    )
-                    .map_err(map_financial_error)?;
-                Ok(IdempotentResponse::ExecuteSettlement(
-                    ExecuteSettlementResponse {
-                        tx_id: tx_id.0,
-                        idempotent_replay: false,
-                    },
-                ))
-            },
-        )?;
-        let IdempotentResponse::ExecuteSettlement(mut response) = response else {
-            return Err(Status::internal("idempotency response type mismatch"));
-        };
-        response.idempotent_replay = replay;
+            let (response, replay) = self
+                .idempotency
+                .execute_once(
+                    key,
+                    IdempotencyOperation::ExecuteSettlement,
+                    Box::new(move || {
+                        let tx_id = self
+                            .ledger
+                            .settle_rwa_mint_from_escrow(
+                                user_id,
+                                AccountId(request.escrow_account_id),
+                                AssetId(request.rwa_asset_id),
+                                asset_amount,
+                                fiat_cost,
+                            )
+                            .map_err(map_financial_error)?;
+                        Ok(IdempotentResponse::ExecuteSettlement(
+                            ExecuteSettlementResponse {
+                                tx_id: tx_id.0,
+                                idempotent_replay: false,
+                            },
+                        ))
+                    }),
+                )
+                .await?;
+            let IdempotentResponse::ExecuteSettlement(mut response) = response else {
+                return Err(Status::from(RpcError::IdempotencyResponseMismatch));
+            };
+            response.idempotent_replay = replay;
 
-        Ok(Response::new(response))
+            Ok(Response::new(response))
+        }
+        .instrument(span)
+        .await
     }
 }
 
@@ -245,16 +521,27 @@ fn decimal_string(value: Decimal) -> DecimalString {
     }
 }
 
-fn parse_decimal_field(value: Option<&DecimalString>, field: &str) -> Result<Decimal, Status> {
+fn parse_decimal_field(
+    value: Option<&DecimalString>,
+    field: &'static str,
+) -> Result<Decimal, RpcError> {
     value
-        .ok_or_else(|| Status::invalid_argument(format!("{field} is required")))?
+        .ok_or(RpcError::MissingDecimal { field })?
         .value
         .parse::<Decimal>()
-        .map_err(|_| Status::invalid_argument(format!("{field} must be a decimal string")))
+        .map_err(|_| RpcError::InvalidDecimal { field })
 }
 
-fn parse_uuid(value: &str, field: &str) -> Result<Uuid, Status> {
-    Uuid::parse_str(value).map_err(|_| Status::invalid_argument(format!("{field} must be UUID")))
+fn parse_uuid(value: &str, field: &'static str) -> Result<Uuid, RpcError> {
+    Uuid::parse_str(value).map_err(|_| RpcError::InvalidUuid { field })
+}
+
+fn parse_uuid_v4(value: &str, field: &'static str) -> Result<Uuid, RpcError> {
+    let uuid = parse_uuid(value, field)?;
+    if uuid.get_version() != Some(Version::Random) {
+        return Err(RpcError::InvalidUuidVersion { field });
+    }
+    Ok(uuid)
 }
 
 fn map_financial_error(error: FinancialError) -> Status {

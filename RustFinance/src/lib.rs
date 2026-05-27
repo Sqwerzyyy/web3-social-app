@@ -20,9 +20,10 @@ pub use financial_engine::{
     FinancialEngine, FinancialError, LedgerClock, SystemClock, Transaction, TransactionKind,
     TransactionStatus, TxId, MAX_ASSET_DECIMALS,
 };
+pub use grpc::RpcError;
 pub use oracle::{
-    ChainlinkPriceAdapter, OracleAggregator, OracleError, OraclePriceProvider, PriceFeed,
-    PriceSource, PythPriceAdapter, RestPriceAdapter, RiskEngine, RiskMode,
+    ChainlinkPriceAdapter, CircuitBreaker, OracleAggregator, OracleError, OraclePriceProvider,
+    PriceFeed, PriceSource, PythPriceAdapter, RestPriceAdapter, RiskEngine, RiskMode,
 };
 pub use price::{
     HttpPriceProvider, InMemoryPriceProvider, PriceError, PriceProvider, ResponseFormat,

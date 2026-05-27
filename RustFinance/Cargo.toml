@@ -15,15 +15,17 @@ tokio               = { version = "1", features = ["full"] }
 reqwest             = { version = "0.12", features = ["json"] }
 uuid                = { version = "1", features = ["v4", "serde"] }
 anyhow              = "1"
-tracing             = { version = "0.1", default-features = false }
+tracing             = "0.1"
 tonic               = { version = "0.12", features = ["transport"] }
 prost               = "0.13"
 alloy               = { version = "2", features = ["full"], optional = true }
 futures-util        = { version = "0.3", optional = true }
+sqlx                = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "postgres", "uuid", "json"], optional = true }
 
 [features]
 default = []
 evm-alloy = ["dep:alloy", "dep:futures-util"]
+postgres-idempotency = ["dep:sqlx"]
 
 [build-dependencies]
 tonic-build         = "0.12"

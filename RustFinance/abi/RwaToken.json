@@ -15,7 +15,7 @@
       { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
       { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
     ],
-    "name": "Mint",
+    "name": "Minted",
     "type": "event"
   },
   {
@@ -24,7 +24,7 @@
       { "indexed": true, "internalType": "address", "name": "from", "type": "address" },
       { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
     ],
-    "name": "Burn",
+    "name": "Redeemed",
     "type": "event"
   }
 ]
