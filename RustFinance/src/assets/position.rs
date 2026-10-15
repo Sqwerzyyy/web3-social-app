@@ -75,7 +75,7 @@ impl AssetPosition for RwaPosition {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/*#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EquityPosition {
     pub id: PositionId,
     pub ticker: String,
@@ -88,7 +88,7 @@ pub struct EquityPosition {
     pub tags: HashSet<Tag>,
 }
 
-impl AssetPosition for EquityPosition {
+impl AssetPosition for EquityPosition { // why so many functions here ??
     fn id(&self) -> PositionId {
         self.id
     }

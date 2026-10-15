@@ -20,11 +20,14 @@ tonic               = { version = "0.12", features = ["transport"] }
 prost               = "0.13"
 alloy               = { version = "2", features = ["full"], optional = true }
 futures-util        = { version = "0.3", optional = true }
+revm                = { version = "40", features = ["asyncdb", "optional_balance_check"], optional = true }
 sqlx                = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "postgres", "uuid", "json"], optional = true }
+bincode            = { version = "2.0.1", features = ["serde"] }
+tokio-stream       = "0.1"
 
 [features]
 default = []
-evm-alloy = ["dep:alloy", "dep:futures-util"]
+evm-alloy = ["dep:alloy", "dep:futures-util", "dep:revm"]
 postgres-idempotency = ["dep:sqlx"]
 
 [build-dependencies]

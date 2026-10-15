@@ -124,7 +124,7 @@ pub struct Money {
     pub currency: Currency,
 }
 
-impl Money {
+impl Money { //change the function with args in it, cause it is too slow without em 
     pub fn zero(currency: Currency) -> Self {
         Self {
             amount: Decimal::ZERO,
